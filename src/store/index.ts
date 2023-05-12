@@ -1,11 +1,11 @@
-import { createStore } from 'vuex'
+import { createStore } from '../vuex4'
 import { RootState } from './rootstate'
-import { CountModule, CartModule, ProductModule } from './moduleCollection'
+import { CountModule } from './moduleCollection'
+import { NestModule } from './counter/nest'
 
 export default createStore<RootState>({
   modules: {
-    count: CountModule,
-    products: ProductModule,
-    cart: CartModule
+    CountModule: CountModule,
+    nestModue: NestModule
   }
 })

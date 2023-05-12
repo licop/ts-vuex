@@ -2,17 +2,18 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 
 import Count from '@/views/Counter.vue'
 import Cart from '@/views/Cart.vue'
+
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/count',
     name: 'count',
     component: Count,
   },
-  {
-    path: '/cart',
-    name: 'Cart',
-    component: Cart
-  },
+  // {
+  //   path: '/cart',
+  //   name: 'Cart',
+  //   component: Cart
+  // },
   {
     path: '/about',
     name: 'About',

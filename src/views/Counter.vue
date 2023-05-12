@@ -15,6 +15,7 @@ import { useStore } from 'vuex'
 export default {
   setup () {
     const store = useStore()
+    console.log(store, 18)
 
     return {
       count: computed(() => store.state.count),

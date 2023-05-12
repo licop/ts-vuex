@@ -9,7 +9,6 @@ export type Getter<S, R> = (state: S, getters: any, rootState: R, rootGetters: a
 export interface GetterTree<S, R> {
   [key: string]: Getter<S, R>;
 }
-
 export interface StoreOptions<S> {
   getters?: GetterTree<S, S>;
   state?: S,

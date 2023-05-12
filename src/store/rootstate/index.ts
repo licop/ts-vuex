@@ -5,7 +5,12 @@
 import { CartState, ProductState } from '@/types/cart'
 
 // 多模块
+// export type RootState = {
+//   products: ProductState,
+//   cart: CartState
+// }
+
 export type RootState = {
-  products: ProductState,
-  cart: CartState
+  count: number
 }
+

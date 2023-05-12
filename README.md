@@ -54,7 +54,7 @@
 
 **方法**
 
-- addChild -- 添加子模块
+- addChild -- 添加子模块到当前模块
 - getChild -- 获取子模块
 - forEachMutation -- 当注册当前模块 mutations 到 store 时，把模块的 mutaitons 对象的所有方法解析成方法名到方法的映射这一部分功能
 - forEachAction -- 当注册当前模块 actions 到 store 时，把模块的 actions 对象的所有方法解析成方法名到方法的映射这一部分功能

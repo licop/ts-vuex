@@ -1,16 +1,15 @@
-import { Module } from 'vuex'
+import { Module } from '@/vuex4'
 import { RootState } from '../rootstate'
+import { NestModule } from './nest'
 
 interface CountState {
   count: number
 }
 
-const state = {
-  count: 0
-}
-
 export const CountModule: Module<CountState, RootState> =  {
-  state,
+  state: {
+    count: 0
+  },
   getters:{
     evenOrOdd: state => state.count % 2 === 0 ? 'even' : 'odd'
   },
@@ -38,5 +37,9 @@ export const CountModule: Module<CountState, RootState> =  {
     decrement (state) {
       state.count--
     }
+  },
+  modules: {
+    nested: NestModule,
+    nested1: NestModule
   }
 }
