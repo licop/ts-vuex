@@ -11,6 +11,6 @@ import { CartState, ProductState } from '@/types/cart'
 // }
 
 export type RootState = {
-  count: number
+  navList: number[]
 }
 
