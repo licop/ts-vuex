@@ -136,6 +136,7 @@ function installModule<R>(store: Store<R>, rootState_: R, path: string[], module
   })
 }
 
+// 获取当前模块的 actionContext，传递给actions函数
 function makeLocalContext<R>(store: Store<R>, namespace: string, path: string[], module: ModuleWrapper<any, R>) {
   let noNamespace = namespace === '' // 根模块没有命名空间
   let actionContext: ActionContext<any, R> = {
@@ -185,6 +186,8 @@ function makeLocalGetters(store: any, namespacename: any) {
   if (!store._makeLocalGettersCache[namespacename]) {
     var gettersProxy = {};
     var splitPos = namespacename.length;
+
+    // Object.getOwnPropertyNames() 函数, 该函数返回指定对象的所有属性的名称, 使对象可以进行枚举
     const types = Object.getOwnPropertyNames(store.getters);
     types.forEach(function (type) {
       // getters方法名不匹配命名空间,跳过 
@@ -298,6 +301,7 @@ class ModuleCollection<R> {
   }
 }
 
+// 工具类
 class Util {
   static forEachValue(obj: object, fn: Function) {
     Object.keys(obj).forEach(key => {
@@ -341,28 +345,23 @@ export interface ActionContext<S, R> {
 type Dispatch = (type: string, payload?: any) => any
 type Commit = (type: string, payload?: any) => any
 
-// ActionTree
 interface ActionTree<S, R> {
   [key: string]: Action<S, R>
 }
 
 type Action<S, R> = (context: ActionContext<S, R>, payload?: any) => void
 
-// MutationTree
 interface MutationTree<S> {
   [key: string]: Mutation<S>
 }
 
 type Mutation<S> = (state: S, payload?: any) => void
 
-// GetterTree
 interface GetterTree<S, R> {
   [key: string]: Getter<S, R>
 }
 
-//  type Getter<S, R> = (state: S, getters: any, rootState: R, rootGetters: any) => any
 type Getter<S, R> = (state: S, getters: any, rootState: R, rootGetters: any) => any
-
 
 type MutationToKey<S> = (mutation: Mutation<S>, key: string) => any
 type GetterToKey<R> = (getter: Getter<any, R>, key: string) => any
