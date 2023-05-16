@@ -26,9 +26,9 @@ export interface ActionContext<S, R> {
   dispatch: Dispatch;
   commit: Commit;
   state: S;
-  //getters: any;
-  //rootState: R;
-  //rootGetters: any;
+  // getters: any;
+  // rootState: R;
+  // rootGetters: any;
 }
 /**-------ActionTree和相关接口结束 */
 
@@ -66,6 +66,7 @@ class Store<S> {
     var rootState = this._moduleCollection.root.state;
     installModule<S>(this, rootState, [],
       this._moduleCollection.root)
+
     this.reactiveState(rootState)
   }
   _state: any
@@ -148,7 +149,7 @@ class Store<S> {
 
 /**
  * 初始化根模块,递归注册所有子模块
- * 收集此内的所有模块getter，mutations,actions方法
+ * 收集此内的所有模块getter，mutations, actions方法
  * 
  * @param store 
  * @param rootState 
@@ -158,6 +159,7 @@ class Store<S> {
 
 function installModule<S>(store: Store<S>, state_: S,
   path: any[], module_: ModuleWrapper<any, S>) {
+
 
   var isRoot = !path.length;// 如果长度为0，那么就是根模块
   var namespace = store._moduleCollection.getNameSpace(path);
@@ -173,7 +175,7 @@ function installModule<S>(store: Store<S>, state_: S,
     var moduleName = path[path.length - 1]
     store._withCommit(function () {
       //  如果父级 State 中 有以当前模块名命名，就抛出错误
-      if (moduleName in parentState) {
+      if (moduleName in (parentState as any)) {
         console.warn(
           ("[vuex] state field \"" + moduleName + "\" was overridden by a module with the same name at \"" + (path.join('.')) + "\"")
         );
@@ -183,7 +185,7 @@ function installModule<S>(store: Store<S>, state_: S,
     })
   }
 
-  var local = module_.context = makeLocalContext(store, namespace, path);
+  var local = makeLocalContext(store, namespace, path);
   module_.forEachMutation(function (handler: Mutation<S>, key: string) {
     var namespaceType = namespace + key;
     registerMutation(store, namespaceType, handler, local)
@@ -315,6 +317,8 @@ function makeLocalGetters(store: any, namespacename: any) {
   if (!store._makeLocalGettersCache[namespacename]) {
     var gettersProxy = {};
     var splitPos = namespacename.length;
+    const types = Object.getOwnPropertyNames(store.getters);
+    console.log(types, 321)
     Object.keys(store.getters).forEach(function (type) {
       // getters方法名不匹配命名空间,跳过 
       if (type.slice(0, splitPos) !== namespacename) return
@@ -374,29 +378,45 @@ class ModuleCollection<S> {
   getNameSpace(path: string[]) {
     var module = this.root;
     return path.reduce(function (namespace, key) {
+      console.log("path==reduce哈哈:", key);
       module = module.getChild(key);
       return namespace + (module.namespaced ? key + '/' : '')
     }, '')
   }
-  // rawModule首次为index.ts文件中的StoreOptions选项对象
-  // 递归
-  register(path: any[], rawModule: Module<any, S>) {
-    var newModule = new ModuleWrapper(rawModule);
 
-    if (path.length == 0) {// path长度等于0，表示首次调用register,增加根module
-      // 如果 rawModule首次为index.ts文件中的StoreOptions选项对象
-      // 创建根Module 保存到ModuleCollection的root属性中
+  // 注册【添加】根模块和所有子模块直到添加完最后一级子模块
+  register(path: any[], rawModule: Module<any, S>) {
+
+    var newModule = new ModuleWrapper(rawModule);
+    console.log("要添加的子模块:", newModule);
+    console.log("拿命名空间当路径——path:", path)
+    if (path.length == 0) {// path长度等于0 为根模块
+      console.log("开始添加根模块:", newModule);
       this.root = newModule
-    } else {// 通过S99递归后会再次判断来创建module，添加到parent中
+      console.log("根模块添加结束:", this.root);
+      console.log("=====================");
+    } else {// 添加子模块到父级模块中
+      console.log("开始添加子模块到父级模块中");
       var parent: ModuleWrapper<any, S> = this.get(path.slice(0, -1));
+      console.log("1.先获取父级ModuleWrapper对象:", parent);
       parent.addChild(path[path.length - 1], newModule);
+      console.log("2.添加子模块完成后:", parent);
+      console.log("=====================");
     }
-    if (rawModule.modules) {// S100register nested modules
-      Util.forEachValue(rawModule.modules,
-        (rawChildModule: Module<any, S>, key: string) => {
-          this.register(path.concat(key), rawChildModule)// S99 递归
-        })
+    if (rawModule.modules) {// 如果存在子模块，继续递归添加
+
+      Object.keys(rawModule.modules).forEach((key) => {
+        this.register(path.concat(key), (rawModule.modules as any)[key])
+      })
     }
+
+    // 方法中参数：path: ["foodSortModule", "foodModule", "foodDetailModule"]
+    // root: addChild: {"foodSortModule":new  ModuleWrapper对象}
+    //   .addChild: {"foodModule": new ModuleWrapper对象}
+    //   .准备添加的模块调用addChild方法之前: {"foodDetailModule",正准备创建ModuleWrapper对象}
+
+    //   // 如何添加foodDetailModule模块到_children
+    //   {"foodDetailModule": 正准备创建ModuleWrapper对象}
 
   }
   get(path: Array<any>): ModuleWrapper<any, S> {
@@ -409,7 +429,7 @@ class ModuleCollection<S> {
 
 export class ModuleWrapper<S, R>{
 
-  _children: ModuleWrapper<any, R>// 保存下一个ModuleClass类对象
+  _children: Record<string, ModuleWrapper<any, R>>// 保存下一个ModuleClass类对象
   _rawModule: Module<any, R>// 保存每一个Module模块到ModuleClass对象
   state: S
   namespaced: boolean
@@ -424,7 +444,7 @@ export class ModuleWrapper<S, R>{
     this.namespaced = rawModule.namespaced || false
   }
   addChild(key: string, module: ModuleWrapper<any, R>) {
-    (this._children as any)[key] = module;
+    this._children[key] = module;
   }
   getChild(key: string) {
     return (this._children as any)[key]
@@ -445,7 +465,7 @@ export class ModuleWrapper<S, R>{
       Util.forEachValue(this._rawModule.getters, fn);
     }
   }
-  forEachChild(fn: ChildModuleTokey<S>) {
+  forEachChild(fn: ChildModuleTokey<R>) {
     Util.forEachValue(this._children, fn)
   }
 

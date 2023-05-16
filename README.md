@@ -38,7 +38,6 @@
 
 - register -- 注册根模块和子模块的方法 【注册就是添加】
 - getNameSpace -- 循环递归获取命名空间方法
-- getChild -- 获取子模块方法
 
 ## ModuleWrapper 类
 
@@ -79,6 +78,6 @@
 
 ## makeLocalContext 方法
 
-此方法生成模块 ActionContext 类型的对象，对象属性包括 dispatch，commit，state 三部分
+此方法生成模块 **ActionContext** 类型的对象，对象属性包括 dispatch，commit，state 三部分
 
 返回方法的对象主要向 actions， mutatiosns 中的方法参数传递 state，commit，dispatch 值

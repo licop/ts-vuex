@@ -1,7 +1,6 @@
 <template>
   <div id="nav">
     <router-link to="/count">计数器</router-link> |
-    <!-- <router-link to="/cart">购物车</router-link> | -->
     <router-link to="/about">关于</router-link>
   </div>
   <router-view />

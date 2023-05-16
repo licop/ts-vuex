@@ -9,21 +9,25 @@
 </template>
 
 <script>
-import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { computed, onMounted } from 'vue'
+import { useStore } from '../vuex4/index'
 
 export default {
   setup () {
     const store = useStore()
-    console.log(store, 18)
-
+    console.log(store.state, 18)
+    
+    onMounted(() => {
+      // store.commit("Count/increment")
+      store.dispatch("Count/increment")
+    })
     return {
-      count: computed(() => store.state.count),
-      evenOrOdd: computed(() => store.getters.evenOrOdd),
-      increment: () => store.dispatch('increment'),
-      decrement: () => store.dispatch('decrement'),
-      incrementIfOdd: () => store.dispatch('incrementIfOdd'),
-      incrementAsync: () => store.dispatch('incrementAsync')
+      count: computed(() => store.state.Count.count),
+      evenOrOdd: computed(() => store.getters['Count/evenOrOdd']),
+      increment: () => store.dispatch('Count/increment'),
+      decrement: () => store.dispatch('Count/decrement'),
+      incrementIfOdd: () => store.dispatch('Count/incrementIfOdd'),
+      incrementAsync: () => store.dispatch('Count/incrementAsync')
     }
   }
 }

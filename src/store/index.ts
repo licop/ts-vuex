@@ -3,12 +3,13 @@ import { RootState } from './rootstate'
 import { CountModule } from './moduleCollection'
 import { NestModule } from './counter/nest'
 
+
 export default createStore<RootState>({
   state: {
-    navList: [1, 2, 4]
+    navList: [1, 3, 5]
   },
   modules: {
-    CountModule: CountModule,
-    nestModue: NestModule
+    Count: CountModule,
+    nest: NestModule
   }
 })

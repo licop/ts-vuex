@@ -1,4 +1,4 @@
-import { App, inject } from 'vue'
+import { App, inject, reactive } from 'vue'
 
 const injectKey = 'store'
 
@@ -10,35 +10,54 @@ export function createStore<S>(options: StoreOptions<S>): Store<S> {
   return new Store<S>(options)
 } 
 
-class Store<S = any> {
+export class Store<S = any> {
   moduleCollection: ModuleCollection<S>
   mutations: Record<string, any> = {}
   actions: Record<string, any> = {}
+  getters: GetterTree<any, S> = {}
   commit: Commit
   dispatch: Dispatch
+  _committing: boolean
+  _state: any
+  _modulesNamespaceMap: Record<string, ModuleWrapper<any, S>> = {}
+  _makeLocalGettersCache: object = {}
+
   constructor(options: StoreOptions<S>) {
-    console.log("options:", options)
     this.moduleCollection = new ModuleCollection(options)
+    this._modulesNamespaceMap = Object.create(null)
+    this._makeLocalGettersCache = Object.create(null)
+    
     let store = this
+    let ref = this;
+    let dispatch = ref.dispatch_;
+    let commit = ref.commit_;
+    this._committing = false
     this.commit = function bountCommit(type: string, payload: any) {
-      this.commit_.call(store, type, payload)
+      commit.call(store, type, payload)
     }
     this.dispatch = function commitDispatch(type: string, payload: any) {
-      this.dispatch_.call(store, type, payload)
+      dispatch.call(store, type, payload)
     }
     // 注册模块
     let rootState = this.moduleCollection.root.state
-    console.log("开始注册模块 installModule:")
     installModule(store, rootState, [], this.moduleCollection.root)
-    console.log("模块注册完后的rootState:", rootState)
+
+    this.reactiveState(rootState)
+  }
+  
+  get state(): S {
+    return this._state.data
   }
 
   install(app: App) {
     app.provide(injectKey, this)
   }
 
-  test() {
-    return '我是store'
+  _withCommit(fn: () => void) {
+    let committing = this._committing;
+    this._committing = true;
+    fn();
+    this._committing = committing
   }
 
   commit_(type: string, payload: any) {
@@ -54,6 +73,10 @@ class Store<S = any> {
     }
     this.actions[type](payload)
   }
+  // 将rootstate变成响应式
+  reactiveState<S>(rootState: S) {
+    this._state = reactive({ data: rootState })
+  }
 }
 
 /**
@@ -64,18 +87,131 @@ class Store<S = any> {
  */
 function installModule<R>(store: Store<R>, rootState_: R, path: string[], module: ModuleWrapper<any, R>) {
   let isRoot = !path.length
-  console.log('path:', path)
+  let namespace = store.moduleCollection.getNamespace(path)
+  if (module.namespaced) {// 如果需要设置命名空间
+    if (store._modulesNamespaceMap[namespace]) {// 如果命名空间已经存在
+      console.error(("[vuex] duplicate namespace " + namespace + " for the namespaced module " + (path.join('/'))));
+    }
+    store._modulesNamespaceMap[namespace] = module
+  }
+  let actionContext: ActionContext<any, R> = makeLocalContext(store, namespace, path, module)
   if(!isRoot) { // 1.如果不是跟模块
     // 拿到父级的state对象
     let parentState: any = getParentState(rootState_, path.slice(0, -1))
-    // 把当前模块的state对象和当前模块名合成一个对象，加到父级state对象上
-    parentState[path[path.length - 1]] = module.state
+    let moduleName = path[path.length - 1]
+    store._withCommit(function () {
+      //  如果父级 State 中 有以当前模块名命名，就抛出错误
+      if (moduleName in (parentState as any)) {
+        console.warn(
+          ("[vuex] state field \"" + moduleName + "\" was overridden by a module with the same name at \"" + (path.join('.')) + "\"")
+        );
+      }
+      // 把当前模块的state对象和当前模块名合成一个对象，加到父级state对象上
+      parentState[moduleName] = module.state
+    })
   }
+
   module.forEachChild((child, key) => {
     installModule(store, rootState_, path.concat(key), child)
   })
+  module.forEachGetter((getter, key) => {
+    let namespaceType = namespace + key
+    Object.defineProperty(store.getters, namespaceType, {
+      get: () => {
+        return getter(actionContext.state, actionContext.getters, store.state, store.getters)
+      }
+    })
+  })
+  module.forEachMutation((mutation, key) => {
+    let namespaceType = namespace + key
+    store.mutations[namespaceType] = function(payload: any) {
+      mutation.call(store, actionContext.state, payload)
+    }
+  })
+  console.log(actionContext.getters, 131)
+  module.forEachAction((action, key) => {
+    let namespaceType = namespace + key
+    store.actions[namespaceType] = function(payload: any) {
+      action.call(store, actionContext, payload)
+    }
+  })
 }
 
+function makeLocalContext<R>(store: Store<R>, namespace: string, path: string[], module: ModuleWrapper<any, R>) {
+  let noNamespace = namespace === '' // 根模块没有命名空间
+  let actionContext: ActionContext<any, R> = {
+    commit: noNamespace ? store.commit : function(type, payload) {
+      type = namespace + type
+      store.commit(type, payload)
+    },
+    dispatch: noNamespace ? store.dispatch : function(type, payload) {
+      type = namespace + type
+      store.dispatch(type, payload)
+    },
+    rootState: {} as R,
+    rootGetters: {},
+    state: {},
+    getters: {}
+  }
+  
+  Object.defineProperties(actionContext, {
+    state: {
+      get: function() {
+        return getParentState(store.state, path)
+      },
+    },
+    getters: {
+      get: function() {
+        return makeLocalGetters(store, namespace)
+      }
+    },
+    rootState: {
+      get: function() {
+        return store.state
+      },
+    },
+    rootGetters: {
+      get: function() {
+        return store.getters
+      }
+    }
+
+  })
+
+  return actionContext
+}
+
+function makeLocalGetters(store: any, namespacename: any) {
+  //  如果 store 中没有存储 以 namespacename 为名字的getters
+  if (!store._makeLocalGettersCache[namespacename]) {
+    var gettersProxy = {};
+    var splitPos = namespacename.length;
+    const types = Object.getOwnPropertyNames(store.getters);
+    types.forEach(function (type) {
+      // getters方法名不匹配命名空间,跳过 
+      if (type.slice(0, splitPos) !== namespacename) return
+      // 提取去除命名空间后的部分[getter方法名]
+      let getterMethodName = type.slice(splitPos)
+
+      // 定义 getterMethodName 属性, get 选择器返回对应哟啊执行的方法
+      // 页面获取 getAllProduct---store.getters.getAllProduct
+      // store.getters["usermodule/getUserinfo"] 会执行 get 选择器
+      Object.defineProperty(gettersProxy, getterMethodName, {
+        get: function () {
+          return store.getters[type];
+        },
+        enumerable: true
+      })
+    })
+
+    // 把  gettersProxy 保存到 getters 缓存中
+    store._makeLocalGettersCache[namespacename] = gettersProxy
+  }
+  return store._makeLocalGettersCache[namespacename]
+}
+
+
+// 获取父级的state
 function getParentState<R>(rootState: R, path: string[]) {
   return path.reduce((state, key) => {
     return (state as any)[key]
@@ -94,8 +230,8 @@ class ModuleWrapper<S, R> {
     this.namespaced = rawModule_.namespaced || false
   }
   
-  addChild(key: string, moduleWapper: ModuleWrapper<any, R>) {
-    this.children[key] = moduleWapper
+  addChild(key: string, moduleWrapper: ModuleWrapper<any, R>) {
+    this.children[key] = moduleWrapper
   }
   
   getChild(key: string) {
@@ -103,13 +239,27 @@ class ModuleWrapper<S, R> {
   }
 
   forEachChild(fn: ChildModuleWrapperToKey<R>) {
-    Object.keys(this.children).forEach(key => {
-      fn(this.children[key], key)
-    })
+    Util.forEachValue(this.children, fn)
+  }
+
+  forEachGetter(fn: GetterToKey<R>) {
+    if(this.rawModule.getters) {
+      Util.forEachValue(this.rawModule.getters, fn)
+    }
+  }
+
+  forEachMutation(fn: MutationToKey<S>) {
+    if(this.rawModule.mutations) {
+      Util.forEachValue(this.rawModule.mutations, fn)
+    }
+  }
+
+  forEachAction(fn: ActionToKey<S, R>) {
+    if(this.rawModule.actions) {
+      Util.forEachValue(this.rawModule.actions, fn)
+    }
   }
 }
-
-type ChildModuleWrapperToKey<R> = (moduleWrapper: ModuleWrapper<any, R>, key: string) => void
 
 class ModuleCollection<R> {
   root!: ModuleWrapper<any, R>
@@ -123,9 +273,10 @@ class ModuleCollection<R> {
       this.root = newModule
     } else { // 添加子模块到父级模块
       let parentModule = this.get(path.slice(0 ,-1))
+
       parentModule.addChild(path[path.length -1], newModule)
     }
-
+    
     if(rawModule.modules) {
       Object.keys(rawModule.modules).forEach(key => {
         this.register(path.concat(key), (rawModule.modules as any)[key])
@@ -137,6 +288,14 @@ class ModuleCollection<R> {
     return path.reduce((module: ModuleWrapper<any, R>, key: string) => {
       return module.getChild(key)
     }, this.root)
+  }
+
+  getNamespace(path: string[]) {
+    let moduleWrapper  = this.root
+    return path.reduce((namespace, key) => {
+      moduleWrapper =  moduleWrapper.getChild(key)
+      return namespace+(moduleWrapper.namespaced ? key + "/" : '')
+    }, '')
   }
 }
 
@@ -171,10 +330,11 @@ export interface Module<S, R> {
   modules?: ModuleTree<R>;
 }
 
-interface ActionContext<S, R> {
+export interface ActionContext<S, R> {
   dispatch: Dispatch;
   commit: Commit;
   state: S;
+  getters: any,
   rootState: R;
   rootGetters: any;
 }
@@ -201,4 +361,12 @@ interface GetterTree<S, R> {
   [key: string]: Getter<S, R>
 }
 
+//  type Getter<S, R> = (state: S, getters: any, rootState: R, rootGetters: any) => any
 type Getter<S, R> = (state: S, getters: any, rootState: R, rootGetters: any) => any
+
+
+type MutationToKey<S> = (mutation: Mutation<S>, key: string) => any
+type GetterToKey<R> = (getter: Getter<any, R>, key: string) => any
+type ActionToKey<S, R> = (action: Action<S, R>, key: string) => any
+
+type ChildModuleWrapperToKey<R> = (moduleWrapper: ModuleWrapper<any, R>, key: string) => void

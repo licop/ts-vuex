@@ -2,15 +2,8 @@
 // 但对于单模块一般就是根模块，可以往RootState中添加数据
 // 单模块中用到的state
 
-import { CartState, ProductState } from '@/types/cart'
-
-// 多模块
-// export type RootState = {
-//   products: ProductState,
-//   cart: CartState
-// }
 
 export type RootState = {
-  navList: number[]
+  navList: Array<number>
 }
 

@@ -7,11 +7,19 @@ interface CountState {
 }
 
 export const CountModule: Module<CountState, RootState> =  {
+  namespaced: true,
   state: {
     count: 0
   },
   getters:{
-    evenOrOdd: state => state.count % 2 === 0 ? 'even' : 'odd'
+    evenOrOdd: (state, getters,rootState, rootGetters) => {
+      console.log(state, getters, rootState, rootGetters, 16)
+      console.log(getters.doubleCount, 2)
+      return state.count % 2 === 0 ? 'even' : 'odd'
+    },
+    doubleCount: (state) => {
+      return state.count * 2
+    }
   },
   actions: {
     increment: ({ commit }) => commit('increment'),
@@ -32,6 +40,7 @@ export const CountModule: Module<CountState, RootState> =  {
   },
   mutations: {
     increment (state) {
+      console.log(state, 36)
       state.count++
     },
     decrement (state) {
