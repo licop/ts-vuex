@@ -128,7 +128,6 @@ function installModule<R>(store: Store<R>, rootState_: R, path: string[], module
       mutation.call(store, actionContext.state, payload)
     }
   })
-  console.log(actionContext.getters, 131)
   module.forEachAction((action, key) => {
     let namespaceType = namespace + key
     store.actions[namespaceType] = function(payload: any) {

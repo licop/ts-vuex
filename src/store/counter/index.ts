@@ -12,8 +12,7 @@ export const CountModule: Module<CountState, RootState> =  {
     count: 0
   },
   getters:{
-    evenOrOdd: (state, getters,rootState, rootGetters) => {
-      console.log(state, getters, rootState, rootGetters, 16)
+    evenOrOdd: (state, getters, rootState, rootGetters) => {
       console.log(getters.doubleCount, 2)
       return state.count % 2 === 0 ? 'even' : 'odd'
     },
@@ -40,7 +39,6 @@ export const CountModule: Module<CountState, RootState> =  {
   },
   mutations: {
     increment (state) {
-      console.log(state, 36)
       state.count++
     },
     decrement (state) {
