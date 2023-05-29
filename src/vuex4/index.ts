@@ -35,7 +35,7 @@ export class Store<S = any> {
     this.commit = function bountCommit(type: string, payload: any) {
       commit.call(store, type, payload)
     }
-    this.dispatch = function commitDispatch(type: string, payload: any) {
+    this.dispatch = function bountDispatch(type: string, payload: any) {
       dispatch.call(store, type, payload)
     }
     // 注册模块
@@ -175,7 +175,6 @@ function makeLocalContext<R>(store: Store<R>, namespace: string, path: string[],
         return store.getters
       }
     }
-
   })
 
   return actionContext
@@ -211,7 +210,6 @@ function makeLocalGetters(store: any, namespacename: any) {
   }
   return store._makeLocalGettersCache[namespacename]
 }
-
 
 // 获取父级的state
 function getParentState<R>(rootState: R, path: string[]) {
@@ -249,7 +247,7 @@ class ModuleWrapper<S, R> {
       Util.forEachValue(this.rawModule.getters, fn)
     }
   }
-
+  
   forEachMutation(fn: MutationToKey<S>) {
     if(this.rawModule.mutations) {
       Util.forEachValue(this.rawModule.mutations, fn)
@@ -268,7 +266,7 @@ class ModuleCollection<R> {
   constructor(rawRootModule: Module<any, R>) {
     this.register([], rawRootModule)
   }
-
+  
   register(path: any[], rawModule: Module<any, R>) {
     let newModule = new ModuleWrapper<any, R>(rawModule)
     if(path.length === 0) { // path长度等于0为根模块
